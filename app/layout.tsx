@@ -26,7 +26,7 @@ export default function RootLayout({
         <div className="flex" style={{ minHeight: "calc(100vh - 79px)" }}>
           <Sidebar />
           <main className="flex-1 pl-[29px] pr-[120px] pt-[108px]">
-            <div className="w-full max-w-[1200px]">{children}</div>
+            {children}
           </main>
         </div>
       </body>

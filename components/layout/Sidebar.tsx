@@ -28,15 +28,19 @@ export function Sidebar() {
       </Link>
 
       <Link
-        href="/booking"
+        href="/profile"
         className="flex h-[49px] w-[49px] items-center justify-center rounded-[5px]"
+        style={{
+          background: pathname === "/profile" ? "#4a8394" : "transparent",
+          boxShadow: pathname === "/profile" ? "0 2px 4.025px rgba(59,59,59,0.25)" : "none",
+        }}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path
             fillRule="evenodd"
             clipRule="evenodd"
             d="M0 21c0-4.4183 3.58172-8 8-8 4.4183 0 8 3.5817 8 8l-2 0c0-3.3137-2.6863-6-6-6-3.31371 0-6 2.6863-6 6l-2 0z m8-9c-3.315 0-6-2.685-6-6 0-3.315 2.685-6 6-6 3.315 0 6 2.685 6 6 0 3.315-2.685 6-6 6z m0-2c2.21 0 4-1.79 4-4 0-2.21-1.79-4-4-4-2.21 0-4 1.79-4 4 0 2.21 1.79 4 4 4z"
-            fill="#4a8394"
+            fill={pathname === "/profile" ? "white" : "#4a8394"}
           />
         </svg>
       </Link>
