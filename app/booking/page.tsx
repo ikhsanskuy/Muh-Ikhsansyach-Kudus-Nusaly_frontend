@@ -37,6 +37,15 @@ export default function BookingPage() {
   const [consumption, setConsumption] = useState<string[]>([]);
   const [nominal, setNominal] = useState<number | "">("");
 
+  const [timeError, setTimeError] = useState("");
+  const [participantError, setParticipantError] = useState("");
+  const [unitError, setUnitError] = useState("");
+  const [roomError, setRoomError] = useState("");
+  const [dateError, setDateError] = useState("");
+  const [startTimeError, setStartTimeError] = useState("");
+  const [endTimeError, setEndTimeError] = useState("");
+  const [participantCountError, setParticipantCountError] = useState("");
+
   const [unitOptions, setUnitOptions] = useState<{ value: string; label: string }[]>([]);
   const [roomOptions, setRoomOptions] = useState<{ value: string; label: string; capacity: number }[]>([]);
   const [loadingUnits, setLoadingUnits] = useState(true);
@@ -76,38 +85,53 @@ export default function BookingPage() {
       .finally(() => setLoadingRooms(false));
   }, [unit]);
 
+  useEffect(() => {
+    if (startTime && endTime) {
+      if (endTime <= startTime) {
+        setTimeError("Waktu selesai harus di atas waktu mulai");
+      } else {
+        setTimeError("");
+      }
+    } else {
+      setTimeError("");
+    }
+  }, [startTime, endTime]);
+
+  useEffect(() => {
+    if (capacity !== null && typeof participants === "number" && participants > capacity) {
+      setParticipantError("Jumlah peserta tidak boleh melebihi kapasitas ruangan");
+    } else {
+      setParticipantError("");
+    }
+  }, [participants, capacity]);
+
   const handleUnitChange = (val: string) => {
     setUnit(val);
+    setUnitError("");
   };
 
   const handleRoomChange = (val: string) => {
     setRoom(val);
+    setRoomError("");
     const found = roomOptions.find((r) => r.value === val);
     setCapacity(found ? found.capacity : null);
   };
 
   const handleSubmit = async () => {
-    if (!room) {
-      alert("Silakan pilih ruangan meeting");
-      return;
-    }
-    if (!date) {
-      alert("Silakan pilih tanggal rapat");
-      return;
-    }
-    if (!startTime) {
-      alert("Silakan pilih waktu mulai");
-      return;
-    }
-    if (!endTime) {
-      alert("Silakan pilih waktu selesai");
-      return;
-    }
-    if (!participants || participants < 1) {
-      alert("Silakan masukan jumlah peserta");
-      return;
-    }
+    const err = (fn: (v: string) => void, msg: string, cond: boolean) => {
+      fn(cond ? msg : "");
+      return cond;
+    };
 
+    const hasUnitError = err(setUnitError, "Silakan pilih unit", !unit);
+    const hasRoomError = err(setRoomError, "Silakan pilih ruangan meeting", !room);
+    const hasDateError = err(setDateError, "Silakan pilih tanggal rapat", !date);
+    const hasStartTimeError = err(setStartTimeError, "Silakan pilih waktu mulai", !startTime);
+    const hasEndTimeError = err(setEndTimeError, "Silakan pilih waktu selesai", !endTime);
+    const hasParticipantError = err(setParticipantCountError, "Silakan masukan jumlah peserta", !participants || participants < 1);
+
+    if (hasUnitError || hasRoomError || hasDateError || hasStartTimeError || hasEndTimeError || hasParticipantError) return;
+    if (timeError || participantError) return;
     setSubmitting(true);
 
     try {
@@ -210,6 +234,11 @@ export default function BookingPage() {
               onChange={handleUnitChange}
               placeholder={loadingUnits ? "Memuat..." : "Pilih Unit"}
             />
+            {unitError && (
+              <span className="text-[13px] font-normal leading-tight" style={{ color: "#ff0505" }}>
+                {unitError}
+              </span>
+            )}
           </div>
 
           <div className="flex w-[384px] flex-col gap-2">
@@ -223,6 +252,11 @@ export default function BookingPage() {
               placeholder={loadingRooms ? "Memuat..." : "Pilih Ruangan Meeting"}
               disabled={!unit || loadingRooms}
             />
+            {roomError && (
+              <span className="text-[13px] font-normal leading-tight" style={{ color: "#ff0505" }}>
+                {roomError}
+              </span>
+            )}
           </div>
 
           <div className="flex w-[384px] flex-col gap-2">
@@ -280,10 +314,15 @@ export default function BookingPage() {
                 ref={dateInputRef}
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => { setDate(e.target.value); setDateError(""); }}
                 className="sr-only"
               />
             </div>
+            {dateError && (
+              <span className="text-[13px] font-normal leading-tight" style={{ color: "#ff0505" }}>
+                {dateError}
+              </span>
+            )}
           </div>
 
           <div className="flex w-[384px] flex-col gap-2">
@@ -291,9 +330,14 @@ export default function BookingPage() {
             <SelectDropdown
               options={TIME_SLOTS}
               value={startTime}
-              onChange={setStartTime}
+              onChange={(v) => { setStartTime(v); setStartTimeError(""); }}
               placeholder="Pilih Waktu Mulai"
             />
+            {startTimeError && (
+              <span className="text-[13px] font-normal leading-tight" style={{ color: "#ff0505" }}>
+                {startTimeError}
+              </span>
+            )}
           </div>
 
           <div className="flex w-[277px] flex-col gap-2">
@@ -301,30 +345,41 @@ export default function BookingPage() {
             <SelectDropdown
               options={TIME_SLOTS}
               value={endTime}
-              onChange={setEndTime}
+              onChange={(v) => { setEndTime(v); setEndTimeError(""); }}
               placeholder="Pilih Waktu Selesai"
             />
+            {(timeError || endTimeError) && (
+              <span className="text-[13px] font-normal leading-tight" style={{ color: "#ff0505" }}>
+                {endTimeError || timeError}
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="mt-[35px] flex w-[384px] flex-col gap-2">
-          <label className="text-[16px] font-semibold text-[#232323]">Jumlah Peserta</label>
-          <div
-            className="flex h-[54px] w-full items-center rounded-[4px] border px-[14px]"
-            style={{ borderColor: "#ebebeb", background: "#fff" }}
-          >
-            <input
-              type="number"
-              placeholder="Masukan Jumlah Peserta"
-              value={participants}
-              onChange={(e) =>
-                setParticipants(e.target.value === "" ? "" : Number(e.target.value))
-              }
-              min={1}
-              className="w-full text-[16px] font-normal text-[#868686] outline-none placeholder:text-[#868686] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
+          <div className="mt-[35px] flex w-[384px] flex-col gap-2">
+            <label className="text-[16px] font-semibold text-[#232323]">Jumlah Peserta</label>
+            <div
+              className="flex h-[54px] w-full items-center rounded-[4px] border px-[14px]"
+              style={{ borderColor: "#ebebeb", background: "#fff" }}
+            >
+              <input
+                type="number"
+                placeholder="Masukan Jumlah Peserta"
+                value={participants}
+                onChange={(e) => {
+                  setParticipants(e.target.value === "" ? "" : Number(e.target.value));
+                  setParticipantCountError("");
+                }}
+                min={1}
+                className="w-full text-[16px] font-normal text-[#868686] outline-none placeholder:text-[#868686] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </div>
+            {(participantError || participantCountError) && (
+              <span className="text-[13px] font-normal leading-tight" style={{ color: "#ff0505" }}>
+                {participantCountError || participantError}
+              </span>
+            )}
           </div>
-        </div>
 
         <div className="mt-[35px] flex w-[343px] flex-col gap-[14px]">
           <label className="text-[16px] font-semibold text-[#232323]">Jenis Konsumsi</label>
@@ -342,27 +397,28 @@ export default function BookingPage() {
           ))}
         </div>
 
-        <div className="mt-[35px] flex w-[384px] flex-col gap-2">
-          <label className="text-[16px] font-semibold text-[#232323]">Nominal Konsumsi</label>
-          <div
-            className="flex h-[54px] w-full overflow-hidden rounded-[4px] border"
-            style={{ borderColor: "#ebebeb" }}
-          >
-            <div className="flex w-[50px] shrink-0 items-center justify-center bg-[#4a8394]">
-              <span className="text-[16px] font-normal text-white">Rp</span>
+          <div className="mt-[35px] flex w-[384px] flex-col gap-2">
+            <label className="text-[16px] font-semibold text-[#232323]">Nominal Konsumsi</label>
+            <div
+              className="flex h-[54px] w-full overflow-hidden rounded-[4px] border"
+              style={{ borderColor: "#ebebeb" }}
+            >
+              <div className="flex w-[50px] shrink-0 items-center justify-center bg-[#4a8394]">
+                <span className="text-[16px] font-normal text-white">Rp</span>
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Masukan Nominal"
+                value={nominal === "" ? "" : Number(nominal).toLocaleString("id-ID")}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, "");
+                  setNominal(raw === "" ? "" : Number(raw));
+                }}
+                className="flex-1 px-[14px] text-[16px] font-normal text-[#868686] outline-none placeholder:text-[#868686]"
+              />
             </div>
-            <input
-              type="number"
-              placeholder="Masukan Nominal"
-              value={nominal}
-              onChange={(e) =>
-                setNominal(e.target.value === "" ? "" : Number(e.target.value))
-              }
-              min={0}
-              className="flex-1 px-[14px] text-[16px] font-normal text-[#868686] outline-none placeholder:text-[#868686] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
           </div>
-        </div>
       </div>
 
       <div className="mt-[24px] flex justify-end gap-[24px]">
