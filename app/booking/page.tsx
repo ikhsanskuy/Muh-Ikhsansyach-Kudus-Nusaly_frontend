@@ -1,29 +1,147 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import SelectDropdown from "@/components/ui/SelectDropdown";
 
-const UNIT_OPTIONS = ["Pilih Unit", "UNIT KEUANGAN", "UNIT SDM", "UNIT UMUM"];
-const ROOM_OPTIONS = ["Pilih Ruangan Meeting", "Ruang Prambanan", "Ruang Borobudur", "Ruang Komodo"];
+const TIME_SLOTS = Array.from({ length: 23 }, (_, i) => {
+  const h = Math.floor(i / 2) + 7;
+  const m = i % 2 === 0 ? "00" : "30";
+  const label = `${String(h).padStart(2, "0")}:${m}`;
+  return { value: label, label };
+});
+
+const MONTHS_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+function formatDateID(dateStr: string) {
+  const d = new Date(dateStr + "T00:00:00");
+  return `${d.getDate()} ${MONTHS_ID[d.getMonth()]} ${d.getFullYear()}`;
+}
 
 const CONSUMPTION_TYPES = ["Snack Siang", "Makan Siang", "Snack Sore"];
+
+const API = "http://localhost:3001/api";
 
 export default function BookingPage() {
   const [unit, setUnit] = useState("");
   const [room, setRoom] = useState("");
-  const [capacity] = useState("");
+  const [capacity, setCapacity] = useState<number | null>(null);
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [participants, setParticipants] = useState("");
+  const [participants, setParticipants] = useState<number | "">("");
   const [consumption, setConsumption] = useState<string[]>([]);
-  const [nominal, setNominal] = useState("");
+  const [nominal, setNominal] = useState<number | "">("");
+
+  const [unitOptions, setUnitOptions] = useState<{ value: string; label: string }[]>([]);
+  const [roomOptions, setRoomOptions] = useState<{ value: string; label: string; capacity: number }[]>([]);
+  const [loadingUnits, setLoadingUnits] = useState(true);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API}/units`)
+      .then((res) => res.json())
+      .then((data: { id: string; name: string }[]) =>
+        setUnitOptions(data.map((u) => ({ value: u.id, label: u.name })))
+      )
+      .catch(() => alert("Gagal memuat data unit"))
+      .finally(() => setLoadingUnits(false));
+  }, []);
+
+  useEffect(() => {
+    if (!unit) {
+      setRoomOptions([]);
+      return;
+    }
+    setLoadingRooms(true);
+    setRoom("");
+    setCapacity(null);
+    fetch(`${API}/rooms?unitId=${unit}`)
+      .then((res) => res.json())
+      .then((data: { id: string; name: string; capacity: number }[]) =>
+        setRoomOptions(data.map((r) => ({ value: r.id, label: r.name, capacity: r.capacity })))
+      )
+      .catch(() => alert("Gagal memuat data ruangan"))
+      .finally(() => setLoadingRooms(false));
+  }, [unit]);
+
+  const handleUnitChange = (val: string) => {
+    setUnit(val);
+  };
+
+  const handleRoomChange = (val: string) => {
+    setRoom(val);
+    const found = roomOptions.find((r) => r.value === val);
+    setCapacity(found ? found.capacity : null);
+  };
+
+  const handleSubmit = async () => {
+    if (!room) {
+      alert("Silakan pilih ruangan meeting");
+      return;
+    }
+    if (!date) {
+      alert("Silakan pilih tanggal rapat");
+      return;
+    }
+    if (!startTime) {
+      alert("Silakan pilih waktu mulai");
+      return;
+    }
+    if (!endTime) {
+      alert("Silakan pilih waktu selesai");
+      return;
+    }
+    if (!participants || participants < 1) {
+      alert("Silakan masukan jumlah peserta");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const res = await fetch(`${API}/bookings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomId: room,
+          meetingDate: date,
+          startTime,
+          endTime,
+          participantCount: participants,
+          consumptionType: consumption.join(", "),
+          consumptionNominal: nominal || 0,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Gagal menyimpan");
+
+      router.push("/");
+    } catch {
+      alert("Gagal menyimpan. Pastikan server backend berjalan");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const toggleConsumption = (item: string) => {
     setConsumption((prev) =>
       prev.includes(item) ? prev.filter((c) => c !== item) : [...prev, item]
     );
   };
+
+  if (!mounted) return null;
 
   return (
     <div className="pb-[60px]">
@@ -67,12 +185,8 @@ export default function BookingPage() {
           </svg>
         </Link>
         <div className="flex flex-col gap-[6px]">
-          <h1 className="text-[20px] font-semibold text-[#000]">
-            Ruang Meeting
-          </h1>
-          <span className="text-[16px] font-normal text-[#868686]">
-            Ruang Meeting
-          </span>
+          <h1 className="text-[20px] font-semibold text-[#000]">Ruang Meeting</h1>
+          <span className="text-[16px] font-normal text-[#868686]">Ruang Meeting</span>
         </div>
       </div>
 
@@ -84,65 +198,50 @@ export default function BookingPage() {
           boxShadow: "0 4px 9.013px rgba(204,204,204,0.25)",
         }}
       >
-        <h2 className="text-[20px] font-semibold text-[#000]">
-          Informasi Ruang Meeting
-        </h2>
+        <h2 className="text-[20px] font-semibold text-[#000]">Informasi Ruang Meeting</h2>
         <div className="my-[24px] h-px w-full bg-[#ebebeb]" />
 
         <div className="flex flex-wrap gap-[35px]">
           <div className="flex w-[384px] flex-col gap-2">
-            <label className="text-[16px] font-semibold text-[#232323]">
-              Unit
-            </label>
-            <div
-              className="flex h-[54px] w-full cursor-pointer items-center justify-between rounded-[4px] border px-[14px]"
-              style={{ borderColor: "#ebebeb", background: "#fff" }}
-            >
-              <span className="text-[16px] font-normal text-[#868686]">
-                {unit || "Pilih Unit"}
-              </span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M4 4l-4-4 8 0-4 4z"
-                  fill="#000"
-                  transform="translate(5.333, 6.667)"
-                />
-              </svg>
-            </div>
+            <label className="text-[16px] font-semibold text-[#232323]">Unit</label>
+            <SelectDropdown
+              options={unitOptions}
+              value={unit}
+              onChange={handleUnitChange}
+              placeholder={loadingUnits ? "Memuat..." : "Pilih Unit"}
+            />
           </div>
 
           <div className="flex w-[384px] flex-col gap-2">
             <label className="text-[16px] font-semibold text-[#232323]">
               Pilihan Ruangan Meeting
             </label>
-            <div
-              className="flex h-[54px] w-full cursor-pointer items-center justify-between rounded-[4px] border px-[14px]"
-              style={{ borderColor: "#ebebeb", background: "#fff" }}
-            >
-              <span className="text-[16px] font-normal text-[#868686]">
-                {room || "Pilih Ruangan Meeting"}
-              </span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M4 4l-4-4 8 0-4 4z"
-                  fill="#000"
-                  transform="translate(5.333, 6.667)"
-                />
-              </svg>
-            </div>
+            <SelectDropdown
+              options={roomOptions}
+              value={room}
+              onChange={handleRoomChange}
+              placeholder={loadingRooms ? "Memuat..." : "Pilih Ruangan Meeting"}
+              disabled={!unit || loadingRooms}
+            />
           </div>
 
           <div className="flex w-[384px] flex-col gap-2">
-            <label className="text-[16px] font-semibold text-[#232323]">
-              Kapasitas Ruangan
-            </label>
+            <label className="text-[16px] font-semibold text-[#232323]">Kapasitas Ruangan</label>
             <div
-              className="flex h-[54px] w-full items-center rounded-[4px] border px-[14px]"
+              className="flex h-[54px] w-full items-center gap-2 rounded-[4px] border px-[14px]"
               style={{ borderColor: "#ebebeb", background: "#f4f4f4" }}
             >
-              <span className="text-[16px] font-normal text-[#868686]">
-                {capacity || "Kapasitas Ruangan"}
-              </span>
+              <input
+                type="number"
+                value={capacity ?? ""}
+                readOnly
+                disabled
+                placeholder="Kapasitas Ruangan"
+                className="w-full bg-transparent text-[16px] font-normal text-[#868686] outline-none placeholder:text-[#868686] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              {capacity !== null && (
+                <span className="shrink-0 text-[16px] font-normal text-[#868686]">Orang</span>
+              )}
             </div>
           </div>
         </div>
@@ -156,19 +255,16 @@ export default function BookingPage() {
           boxShadow: "0 4px 9.013px rgba(204,204,204,0.25)",
         }}
       >
-        <h2 className="text-[20px] font-semibold text-[#000]">
-          Informasi Rapat
-        </h2>
+        <h2 className="text-[20px] font-semibold text-[#000]">Informasi Rapat</h2>
         <div className="my-[24px] h-px w-full bg-[#ebebeb]" />
 
         <div className="flex flex-wrap gap-[35px]">
           <div className="flex w-[384px] flex-col gap-2">
-            <label className="text-[16px] font-semibold text-[#232323]">
-              Tanggal Rapat *
-            </label>
+            <label className="text-[16px] font-semibold text-[#232323]">Tanggal Rapat *</label>
             <div
               className="flex h-[54px] w-full cursor-pointer items-center gap-2 rounded-[4px] border px-[10px]"
               style={{ borderColor: "#ebebeb", background: "#fff" }}
+              onClick={() => dateInputRef.current?.showPicker()}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path
@@ -177,59 +273,42 @@ export default function BookingPage() {
                   transform="translate(2, 1)"
                 />
               </svg>
-              <span className="text-[16px] font-normal text-[#868686]">
-                {date || "Pilih Tanggal"}
+              <span className="text-[16px] font-normal" style={{ color: date ? "#232323" : "#868686" }}>
+                {date ? formatDateID(date) : "Pilih Tanggal"}
               </span>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="sr-only"
+              />
             </div>
           </div>
 
           <div className="flex w-[384px] flex-col gap-2">
-            <label className="text-[16px] font-semibold text-[#232323]">
-              Pilihan Waktu Mulai
-            </label>
-            <div
-              className="flex h-[54px] w-full cursor-pointer items-center justify-between rounded-[4px] border px-[14px]"
-              style={{ borderColor: "#ebebeb", background: "#fff" }}
-            >
-              <span className="text-[16px] font-normal text-[#868686]">
-                {startTime || "Pilih Waktu Mulai"}
-              </span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M4 4l-4-4 8 0-4 4z"
-                  fill="#000"
-                  transform="translate(5.333, 6.667)"
-                />
-              </svg>
-            </div>
+            <label className="text-[16px] font-semibold text-[#232323]">Pilihan Waktu Mulai</label>
+            <SelectDropdown
+              options={TIME_SLOTS}
+              value={startTime}
+              onChange={setStartTime}
+              placeholder="Pilih Waktu Mulai"
+            />
           </div>
 
           <div className="flex w-[277px] flex-col gap-2">
-            <label className="text-[16px] font-semibold text-[#232323]">
-              Waktu Selesai
-            </label>
-            <div
-              className="flex h-[54px] w-full cursor-pointer items-center justify-between rounded-[4px] border px-[14px]"
-              style={{ borderColor: "#ebebeb", background: "#fff" }}
-            >
-              <span className="text-[16px] font-normal text-[#868686]">
-                {endTime || "Pilih Waktu Selesai"}
-              </span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M4 4l-4-4 8 0-4 4z"
-                  fill="#000"
-                  transform="translate(5.333, 6.667)"
-                />
-              </svg>
-            </div>
+            <label className="text-[16px] font-semibold text-[#232323]">Waktu Selesai</label>
+            <SelectDropdown
+              options={TIME_SLOTS}
+              value={endTime}
+              onChange={setEndTime}
+              placeholder="Pilih Waktu Selesai"
+            />
           </div>
         </div>
 
         <div className="mt-[35px] flex w-[384px] flex-col gap-2">
-          <label className="text-[16px] font-semibold text-[#232323]">
-            Jumlah Peserta
-          </label>
+          <label className="text-[16px] font-semibold text-[#232323]">Jumlah Peserta</label>
           <div
             className="flex h-[54px] w-full items-center rounded-[4px] border px-[14px]"
             style={{ borderColor: "#ebebeb", background: "#fff" }}
@@ -238,21 +317,19 @@ export default function BookingPage() {
               type="number"
               placeholder="Masukan Jumlah Peserta"
               value={participants}
-              onChange={(e) => setParticipants(e.target.value)}
-              className="w-full text-[16px] font-normal text-[#868686] outline-none placeholder:text-[#868686]"
+              onChange={(e) =>
+                setParticipants(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              min={1}
+              className="w-full text-[16px] font-normal text-[#868686] outline-none placeholder:text-[#868686] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
         </div>
 
         <div className="mt-[35px] flex w-[343px] flex-col gap-[14px]">
-          <label className="text-[16px] font-semibold text-[#232323]">
-            Jenis Konsumsi
-          </label>
+          <label className="text-[16px] font-semibold text-[#232323]">Jenis Konsumsi</label>
           {CONSUMPTION_TYPES.map((item) => (
-            <label
-              key={item}
-              className="flex cursor-pointer items-center gap-4"
-            >
+            <label key={item} className="flex cursor-pointer items-center gap-4">
               <input
                 type="checkbox"
                 checked={consumption.includes(item)}
@@ -260,29 +337,29 @@ export default function BookingPage() {
                 className="h-6 w-6 rounded-[1.78px] border"
                 style={{ borderColor: "#ebebeb" }}
               />
-              <span className="text-[16px] font-normal text-[#868686]">
-                {item}
-              </span>
+              <span className="text-[16px] font-normal text-[#868686]">{item}</span>
             </label>
           ))}
         </div>
 
         <div className="mt-[35px] flex w-[384px] flex-col gap-2">
-          <label className="text-[16px] font-semibold text-[#232323]">
-            Nominal Konsumsi
-          </label>
-          <div className="flex h-[54px] w-full rounded-[4px] border overflow-hidden"
+          <label className="text-[16px] font-semibold text-[#232323]">Nominal Konsumsi</label>
+          <div
+            className="flex h-[54px] w-full overflow-hidden rounded-[4px] border"
             style={{ borderColor: "#ebebeb" }}
           >
-            <div className="flex w-[50px] items-center justify-center bg-[#4a8394]">
+            <div className="flex w-[50px] shrink-0 items-center justify-center bg-[#4a8394]">
               <span className="text-[16px] font-normal text-white">Rp</span>
             </div>
             <input
               type="number"
               placeholder="Masukan Nominal"
               value={nominal}
-              onChange={(e) => setNominal(e.target.value)}
-              className="flex-1 px-[14px] text-[16px] font-normal text-[#868686] outline-none placeholder:text-[#868686]"
+              onChange={(e) =>
+                setNominal(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              min={0}
+              className="flex-1 px-[14px] text-[16px] font-normal text-[#868686] outline-none placeholder:text-[#868686] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </div>
         </div>
@@ -302,13 +379,15 @@ export default function BookingPage() {
         </Link>
         <button
           type="button"
-          className="flex h-[49px] w-[140px] items-center justify-center rounded-[8px] text-[16px] font-semibold text-white"
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="flex h-[49px] w-[140px] items-center justify-center rounded-[8px] text-[16px] font-semibold text-white disabled:opacity-60"
           style={{
             background: "#4a8394",
             boxShadow: "0 4px 9.013px rgba(204,204,204,0.25)",
           }}
         >
-          Simpan
+          {submitting ? "Menyimpan..." : "Simpan"}
         </button>
       </div>
     </div>
