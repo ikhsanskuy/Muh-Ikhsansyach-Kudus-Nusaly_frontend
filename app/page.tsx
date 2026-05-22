@@ -84,27 +84,9 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="mb-[28px] flex items-center justify-between">
-        <div className="flex items-center gap-[22px]">
-          <Link
-            href="#"
-            className="flex h-[49px] w-[49px] items-center justify-center rounded-[5px]"
-            style={{
-              background: "#4a8394",
-              boxShadow: "0 2px 4.025px rgba(59,59,59,0.25)",
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12.1716 6.36398L7.2218 11.3137L8.636 12.7279L15 6.36398L8.636 0L7.2218 1.41421L12.1716 6.36398Z"
-                fill="white"
-                transform="translate(8, 5.637)"
-              />
-            </svg>
-          </Link>
-          <div className="flex flex-col gap-[6px]">
-            <h1 className="text-[20px] font-semibold text-[#000]">Ruang Meeting</h1>
-            <span className="text-[16px] font-normal text-[#868686]">Ruang Meeting</span>
-          </div>
+        <div className="flex flex-col gap-[6px]">
+          <h1 className="text-[20px] font-semibold text-[#000]">Ruang Meeting</h1>
+          <span className="text-[16px] font-normal text-[#868686]">Ruang Meeting</span>
         </div>
 
         <Link
