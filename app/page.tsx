@@ -97,7 +97,7 @@ export default function DashboardPage() {
             boxShadow: "0 4px 9.013px rgba(204,204,204,0.25)",
           }}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="flex shrink-0 items-center">
             <path
               d="M11 11V5H13V11H19V13H13V19H11V13H5V11H11Z"
               fill="white"

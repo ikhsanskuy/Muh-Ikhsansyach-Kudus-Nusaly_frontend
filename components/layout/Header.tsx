@@ -18,7 +18,7 @@ export function Header() {
           height={31}
           className="object-contain"
         />
-        <span className="text-[20px] font-semibold text-white">FTL</span>
+        <span className="text-[20px] font-semibold text-white">iMeeting</span>
       </Link>
 
       <div className="ml-auto flex items-center gap-6">

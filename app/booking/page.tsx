@@ -178,6 +178,7 @@ export default function BookingPage() {
           height="24"
           viewBox="0 0 24 24"
           fill="none"
+          className="flex shrink-0 items-center"
           style={{ transform: "scaleX(-1)" }}
         >
           <path
@@ -200,7 +201,7 @@ export default function BookingPage() {
             boxShadow: "0 2px 4.025px rgba(59,59,59,0.25)",
           }}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="flex shrink-0 items-center">
             <path
               d="M2.8284 6.36398l4.9498 4.9497-1.4142 1.4142-6.364-6.3639 6.364-6.36398 1.4142 1.41421-4.9498 4.94977z"
               fill="white"
